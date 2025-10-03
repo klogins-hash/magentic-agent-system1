@@ -98,56 +98,68 @@ In Railway dashboard, set:
 
 ## 🏗️ Architecture
 
+### 2-Service Railway Architecture
+
 ```
 ┌─────────────────────────────────────┐
-│   Magentic-UI Web Interface         │
-│   (Railway Hosted)                  │
+│        Railway Service 1            │
+│     Main Application Service        │
+│  ┌─────────────────────────────────┐ │
+│  │     FastAPI Backend             │ │
+│  │  ┌─────────────────────────────┐│ │
+│  │  │  Agent Factory MCP Server   ││ │
+│  │  │  Agent Runtime Service      ││ │
+│  │  │  Magentic-UI Integration    ││ │
+│  │  └─────────────────────────────┘│ │
+│  └─────────────────────────────────┘ │
 └──────────────┬──────────────────────┘
-               │
-               │ User types: "Create a CRM agent"
+               │ Private Network
                │
 ┌──────────────▼──────────────────────┐
-│   Magentic-One Orchestrator         │
-│   - Plans tasks                     │
-│   - Delegates to agents             │
-└──────────────┬──────────────────────┘
-               │
-               │ Calls: create_new_agent()
-               │
-┌──────────────▼──────────────────────┐
-│   Agent Factory MCP Server          │
-│   - Creates agent configs           │
-│   - Returns agent code              │
-│   - Saves configs for reuse         │
-└──────────────┬──────────────────────┘
-               │
-               │ Returns: Python agent code
-               │
-┌──────────────▼──────────────────────┐
-│   Coder Agent (in Magentic-UI)      │
-│   Executes returned code            │
-│   New agent is now available!       │
+│        Railway Service 2            │
+│       PostgreSQL Database           │
+│  ┌─────────────────────────────────┐ │
+│  │     Agent Configurations        │ │
+│  │     Execution History           │ │
+│  │     Templates & Metadata        │ │
+│  └─────────────────────────────────┘ │
 └─────────────────────────────────────┘
+```
+
+### Data Flow
+
+```
+User Request → FastAPI Backend → PostgreSQL Database
+     ↓              ↓                    ↓
+Agent Creation → MCP Server → Agent Code Generation
+     ↓              ↓                    ↓
+Agent Storage → Database → Agent Execution
 ```
 
 ## 📁 Project Structure
 
 ```
 magentic-agent-system/
-├── agent_factory_mcp.py      # Main MCP server
-├── groq_config.json           # Groq model configuration
-├── mcp_config.json            # MCP server registration
-├── requirements.txt           # Python dependencies
-├── Procfile                   # Railway deployment config
-├── railway.json               # Railway deployment settings
-├── .env.example               # Environment variables template
-├── agents/                    # Auto-created by Agent Factory
-│   ├── templates/             # Agent templates
-│   │   ├── generic_assistant.json
-│   │   ├── code_specialist.json
-│   │   └── research_analyst.json
-│   └── [created_agents.json]  # Generated agents saved here
-└── README.md                  # This file
+├── backend/                   # FastAPI Backend Service
+│   ├── main.py               # FastAPI application entry point
+│   ├── models/               # Database models and schemas
+│   │   ├── database.py       # Database connection and setup
+│   │   └── agent.py          # Agent models and schemas
+│   ├── services/             # Business logic services
+│   │   ├── agent_factory.py  # Agent creation service
+│   │   └── agent_runtime.py  # Agent execution service
+│   └── api/                  # API route handlers
+├── agent_factory_mcp.py      # MCP server (integrated with backend)
+├── groq_config.json          # Groq model configuration
+├── mcp_config.json           # MCP server registration
+├── requirements.txt          # Python dependencies
+├── docker-compose.yml        # Local development setup
+├── Procfile                  # Railway deployment config
+├── railway.json              # Railway deployment settings
+├── .env.example              # Environment variables template
+├── agents/                   # Fallback file storage
+│   └── templates/            # Agent templates (fallback)
+└── README.md                 # This file
 ```
 
 ## 🛠️ Available MCP Tools

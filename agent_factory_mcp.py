@@ -1,23 +1,53 @@
 """
 Agent Factory MCP Server
 Provides tools for Magentic-UI's Orchestrator to create new agents dynamically.
+Now integrated with PostgreSQL database for persistence.
 """
 
 from mcp.server.fastmcp import FastMCP
 import json
 import os
+import asyncio
+import aiohttp
 from pathlib import Path
 from typing import List, Dict
 
 # Initialize MCP server
 mcp = FastMCP("AgentFactory")
 
-# Ensure agents directory exists
+# API endpoint for backend service
+BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
+
+# Fallback to file-based storage if backend is not available
 AGENTS_DIR = Path("agents")
 AGENTS_DIR.mkdir(exist_ok=True)
 
 TEMPLATES_DIR = AGENTS_DIR / "templates"
 TEMPLATES_DIR.mkdir(exist_ok=True)
+
+
+async def call_backend_api(method: str, endpoint: str, data: dict = None) -> dict:
+    """Call the backend API"""
+    try:
+        async with aiohttp.ClientSession() as session:
+            url = f"{BACKEND_URL}{endpoint}"
+            
+            if method.upper() == "GET":
+                async with session.get(url) as response:
+                    if response.status == 200:
+                        return await response.json()
+                    else:
+                        return {"error": f"API call failed with status {response.status}"}
+            
+            elif method.upper() == "POST":
+                async with session.post(url, json=data) as response:
+                    if response.status == 200:
+                        return await response.json()
+                    else:
+                        return {"error": f"API call failed with status {response.status}"}
+    
+    except Exception as e:
+        return {"error": f"Backend API unavailable: {str(e)}"}
 
 
 @mcp.tool()
@@ -51,7 +81,33 @@ async def create_new_agent(
     if capabilities is None:
         capabilities = []
     
-    # Create agent configuration
+    # Try to create agent via backend API first
+    agent_data = {
+        "name": name,
+        "role": role,
+        "system_message": system_message,
+        "capabilities": capabilities,
+        "model": "llama-3.3-70b-versatile",
+        "provider": "groq"
+    }
+    
+    # Call backend API
+    result = await call_backend_api("POST", "/api/agents", agent_data)
+    
+    if "error" not in result:
+        # Success - return the agent code from backend
+        return {
+            "status": "success",
+            "message": f"Agent '{name}' created successfully in database",
+            "code": result.get("code", "# Agent code will be generated"),
+            "agent_id": result.get("id"),
+            "database": True
+        }
+    
+    # Fallback to file-based storage
+    print(f"Backend unavailable, using file storage: {result.get('error')}")
+    
+    # Create agent configuration (fallback)
     agent_config = {
         "name": name,
         "role": role,
@@ -67,11 +123,10 @@ async def create_new_agent(
         json.dump(agent_config, f, indent=2)
     
     # Generate Python code to instantiate the agent
-    # This code will be executed by Magentic-UI's Coder agent
     agent_code = f'''
 # Agent: {name}
 # Role: {role}
-# Created by Agent Factory
+# Created by Agent Factory (File Storage)
 
 from autogen_agentchat.agents import AssistantAgent
 from autogen_ext.models.groq import GroqChatCompletionClient
@@ -101,9 +156,10 @@ print(f"Capabilities: {capabilities}")
     
     return {
         "status": "success",
-        "message": f"Agent '{name}' created successfully",
+        "message": f"Agent '{name}' created successfully (file storage)",
         "code": agent_code,
-        "config_path": str(config_path)
+        "config_path": str(config_path),
+        "database": False
     }
 
 
@@ -116,6 +172,19 @@ async def list_agents() -> List[Dict]:
         List of agent configurations
     """
     
+    # Try to get agents from backend API first
+    result = await call_backend_api("GET", "/api/agents")
+    
+    if "error" not in result and isinstance(result, list):
+        return {
+            "total": len(result),
+            "agents": result,
+            "source": "database"
+        }
+    
+    # Fallback to file-based storage
+    print(f"Backend unavailable, using file storage: {result.get('error', 'Unknown error')}")
+    
     agents = []
     
     # Read all agent config files
@@ -127,7 +196,8 @@ async def list_agents() -> List[Dict]:
                     "name": agent_config.get("name"),
                     "role": agent_config.get("role"),
                     "capabilities": agent_config.get("capabilities", []),
-                    "created_at": config_file.stat().st_mtime
+                    "created_at": config_file.stat().st_mtime,
+                    "source": "file"
                 })
         except Exception as e:
             print(f"Error reading {config_file}: {e}")
@@ -135,7 +205,8 @@ async def list_agents() -> List[Dict]:
     
     return {
         "total": len(agents),
-        "agents": agents
+        "agents": agents,
+        "source": "file"
     }
 
 

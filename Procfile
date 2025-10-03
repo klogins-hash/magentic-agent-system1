@@ -1,1 +1,1 @@
-web: magentic-ui --host 0.0.0.0 --port $PORT --config groq_config.json --mcp-config mcp_config.json
+web: python -m uvicorn backend.main:app --host 0.0.0.0 --port $PORT
