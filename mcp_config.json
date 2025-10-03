@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "agent-factory": {
+      "command": "python",
+      "args": ["agent_factory_mcp.py"],
+      "transport": "stdio",
+      "env": {
+        "GROQ_API_KEY": "${GROQ_API_KEY}"
+      }
+    }
+  }
+}

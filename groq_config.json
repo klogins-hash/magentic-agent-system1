@@ -1,0 +1,27 @@
+{
+  "model_client": {
+    "provider": "groq",
+    "model": "llama-3.3-70b-versatile",
+    "api_key_env": "GROQ_API_KEY",
+    "temperature": 0.7,
+    "max_tokens": 4096
+  },
+  "orchestrator": {
+    "max_rounds": 30,
+    "max_time": 600
+  },
+  "agents": {
+    "websurfer": {
+      "enabled": true,
+      "model": "llama-3.3-70b-versatile"
+    },
+    "coder": {
+      "enabled": true,
+      "model": "llama-3.3-70b-versatile"
+    },
+    "filesurfer": {
+      "enabled": true,
+      "model": "llama-3.3-70b-versatile"
+    }
+  }
+}

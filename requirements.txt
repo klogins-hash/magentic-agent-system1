@@ -1,0 +1,17 @@
+# Core dependencies
+magentic-ui>=0.3.0
+groq>=0.5.0
+mcp>=0.9.0
+fastmcp>=0.2.0
+
+# AutoGen extensions for Groq
+autogen-agentchat>=0.4.0
+autogen-ext>=0.4.0
+
+# Utilities
+python-dotenv>=1.0.0
+
+# Web server dependencies for Railway deployment
+uvicorn>=0.24.0
+fastapi>=0.104.0
+gunicorn>=21.2.0
