@@ -22,6 +22,9 @@ COPY . .
 # Create agents directory
 RUN mkdir -p agents/templates
 
+# Make startup script executable
+RUN chmod +x start.sh
+
 # Expose port
 EXPOSE 8000
 
@@ -30,4 +33,4 @@ HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:${PORT:-8000}/health || exit 1
 
 # Start command
-CMD ["sh", "-c", "python -m uvicorn backend.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["./start.sh"]
