@@ -1,0 +1,45 @@
+# Magentic-UI Configuration for Railway Deployment
+# Combines Groq model configuration with MCP server setup
+
+# Model client configuration for all agents
+groq_client: &groq_client
+  provider: OpenAIChatCompletionClient
+  config:
+    model: llama-3.3-70b-versatile
+    api_key: ${GROQ_API_KEY}
+    base_url: https://api.groq.com/openai/v1
+    max_retries: 5
+
+# Assign the same client to all agents
+orchestrator_client: *groq_client
+coder_client: *groq_client
+web_surfer_client: *groq_client
+file_surfer_client: *groq_client
+action_guard_client: *groq_client
+plan_learning_client: *groq_client
+
+# MCP Agent configurations
+mcp_agent_configs:
+  - name: agent_factory
+    description: "The agent factory can create new AI agents with specified capabilities and roles."
+    model_client: *groq_client
+    system_message: |-
+      You are the Agent Factory, a specialized AI assistant that can create other AI agents.
+      
+      You have access to tools for creating, listing, and managing AI agents. Use these tools to:
+      - Create new agents with specific roles (assistant, coder, researcher)
+      - Define agent capabilities and system messages
+      - List existing agents
+      - Retrieve agent configurations
+      
+      When creating agents, be thoughtful about their roles and capabilities to ensure they can effectively help users.
+    reflect_on_tool_use: false
+    mcp_servers:
+      - server_name: agent-factory
+        server_params:
+          type: StdioServerParams
+          command: python
+          args:
+            - agent_factory_mcp.py
+          env:
+            GROQ_API_KEY: ${GROQ_API_KEY}
